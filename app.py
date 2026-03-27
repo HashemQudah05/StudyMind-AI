@@ -304,18 +304,24 @@ if st.session_state.analysis_done:
         st.download_button(ui["dl_btn"], format_chat(st.session_state.chat_history), file_name="Chat.txt", key="dl5")
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # إضافة قاموس للأيقونات
+        avatars = {"user": "👤", "assistant": "🤖"}
+        
         for m in st.session_state.chat_history:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
+            with st.chat_message(m["role"], avatar=avatars.get(m["role"])): 
+                st.markdown(m["content"])
 
         if user_query := st.chat_input(ui["ask"]):
             st.session_state.chat_history.append({"role": "user", "content": user_query})
-            with st.chat_message("user"): st.markdown(user_query)
+            with st.chat_message("user", avatar="👤"): 
+                st.markdown(user_query)
             with st.spinner('...'):
                 out_lang = "Arabic" if is_ar else "English"
                 chat_p = f"Context: {st.session_state.extracted_text[:4000]}\nAnswer in {out_lang}: {user_query}"
                 try:
                     ans = model.generate_content(chat_p).text
-                    with st.chat_message("assistant"): st.markdown(ans)
+                    with st.chat_message("assistant", avatar="🤖"): 
+                        st.markdown(ans)
                     st.session_state.chat_history.append({"role": "assistant", "content": ans})
                 except Exception:
                     st.error("Error generating response.")
