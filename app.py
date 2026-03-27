@@ -7,9 +7,13 @@ import re
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="StudyMind AI", page_icon="🧠", layout="wide")
 
-# 2. إعداد الـ API 
-API_KEY = "AIzaSyDrZAEDm6ER_fhiWGpU37iI5BpoSPLRZCg"
-genai.configure(api_key=API_KEY)
+# 2. إعداد الـ API (بالطريقة الآمنة المخفية)
+try:
+    API_KEY = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=API_KEY)
+except Exception:
+    st.error("❌ المفتاح غير موجود! يرجى إضافته في إعدادات Streamlit Secrets.")
+    st.stop()
 
 @st.cache_resource
 def get_working_model():
@@ -315,3 +319,7 @@ if st.session_state.analysis_done:
                     st.session_state.chat_history.append({"role": "assistant", "content": ans})
                 except Exception:
                     st.error("Error generating response.")
+
+
+
+# Force Reboot
