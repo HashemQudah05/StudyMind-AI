@@ -3,6 +3,7 @@ import PyPDF2
 import google.generativeai as genai
 import json
 import re
+import requests  # <-- مكتبة جديدة لـ Firebase
 
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="StudyMind AI", page_icon="🧠", layout="wide")
@@ -10,9 +11,10 @@ st.set_page_config(page_title="StudyMind AI", page_icon="🧠", layout="wide")
 # 2. إعداد الـ API (بالطريقة الآمنة المخفية)
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
+    FIREBASE_API_KEY = st.secrets["FIREBASE_WEB_API_KEY"]  # <-- مفتاح فايربيس
     genai.configure(api_key=API_KEY)
 except Exception:
-    st.error("❌ المفتاح غير موجود! يرجى إضافته في إعدادات Streamlit Secrets.")
+    st.error("❌ المفاتيح غير موجودة! يرجى إضافة GEMINI_API_KEY و FIREBASE_WEB_API_KEY في إعدادات Streamlit Secrets.")
     st.stop()
 
 @st.cache_resource
@@ -27,7 +29,30 @@ def get_working_model():
 
 model = get_working_model()
 
-# 3. تهيئة الذاكرة
+# ==========================================
+# 3. دوال تسجيل الدخول (Firebase Auth)
+# ==========================================
+def check_password_strength(password):
+    if len(password) < 8: return False
+    if not re.search(r"[A-Z]", password): return False
+    if not re.search(r"\d", password): return False
+    return True
+
+def sign_up(email, password):
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_API_KEY}"
+    payload = {"email": email, "password": password, "returnSecureToken": True}
+    return requests.post(url, json=payload).json()
+
+def sign_in(email, password):
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+    payload = {"email": email, "password": password, "returnSecureToken": True}
+    return requests.post(url, json=payload).json()
+
+# ==========================================
+# 4. تهيئة الذاكرة
+# ==========================================
+if "user_token" not in st.session_state: st.session_state.user_token = None
+if "user_email" not in st.session_state: st.session_state.user_email = None
 if "chat_history" not in st.session_state: st.session_state.chat_history = []
 if "extracted_text" not in st.session_state: st.session_state.extracted_text = ""
 if "analysis_done" not in st.session_state: st.session_state.analysis_done = False
@@ -37,13 +62,60 @@ if "simple_exp" not in st.session_state: st.session_state.simple_exp = ""
 if "detailed_exp" not in st.session_state: st.session_state.detailed_exp = ""
 
 # ==========================================
-# 4. التخطيط العلوي (Header & Settings)
+# 5. شاشة تسجيل الدخول (بوابة العبور)
+# ==========================================
+if st.session_state.user_token is None:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #00d4aa; font-family: sans-serif; font-size: 4rem;'>StudyMind AI 🧠</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray; font-size: 1.2rem;'>الرجاء تسجيل الدخول للبدء / Please Login to start</p><br>", unsafe_allow_html=True)
+    
+    col_l, col_m, col_r = st.columns([1, 1.5, 1])
+    with col_m:
+        auth_mode = st.radio("Choose Action:", ["Login (تسجيل دخول)", "Sign Up (حساب جديد)"], horizontal=True)
+        email = st.text_input("Email (البريد الإلكتروني)")
+        password = st.text_input("Password (كلمة المرور)", type="password")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Submit 🚀", use_container_width=True):
+            if auth_mode == "Sign Up (حساب جديد)":
+                if not check_password_strength(password):
+                    st.error("⚠️ كلمة المرور يجب أن تكون 8 أحرف على الأقل، وتحتوي على حرف كبير (Capital) ورقم.")
+                else:
+                    with st.spinner("جاري إنشاء الحساب..."):
+                        res = sign_up(email, password)
+                        if "error" in res:
+                            st.error(res["error"]["message"])
+                        else:
+                            st.success("✅ تم إنشاء الحساب بنجاح! الرجاء تسجيل الدخول الآن.")
+            else:
+                with st.spinner("جاري تسجيل الدخول..."):
+                    res = sign_in(email, password)
+                    if "error" in res:
+                        st.error("❌ البريد الإلكتروني أو كلمة المرور غير صحيحة.")
+                    else:
+                        st.session_state.user_token = res["idToken"]
+                        st.session_state.user_email = res["email"]
+                        st.rerun()
+    # إيقاف الكود هنا إذا لم يسجل دخول
+    st.stop()
+
+# ==========================================
+# 6. التخطيط العلوي (Header & Settings) بعد تسجيل الدخول
 # ==========================================
 col_empty, col_center, col_settings = st.columns([1, 2, 1])
 
 with col_settings:
     # ترتيب الإعدادات فوق بعض بشكل أنيق ومختصر
     st.markdown("<div style='padding-top: 1.5rem;'></div>", unsafe_allow_html=True)
+    
+    # إظهار إيميل المستخدم وزر تسجيل الخروج
+    st.caption(f"👤 {st.session_state.user_email}")
+    if st.button("🚪 Logout | تسجيل خروج"):
+        st.session_state.user_token = None
+        st.session_state.user_email = None
+        st.session_state.analysis_done = False
+        st.rerun()
+        
     is_dark = st.toggle("🌙 Dark | ليلي", value=True)
     lang_toggle = st.radio("Language", ["العربية", "English"], horizontal=True, label_visibility="collapsed")
     is_ar = lang_toggle == "العربية"
@@ -63,7 +135,7 @@ with col_center:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. محرك الألوان الصارم (The BULLETPROOF CSS)
+# 7. محرك الألوان الصارم (The BULLETPROOF CSS)
 # ==========================================
 bg_color = "#0e1117" if is_dark else "#f4f6f9"
 text_color = "#e2e8f0" if is_dark else "#1e293b"
@@ -152,7 +224,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 6. دوال المعالجة
+# 8. دوال المعالجة
 # ==========================================
 def extract_text(file):
     try:
@@ -185,7 +257,7 @@ def format_chat(chat_hist):
     return txt
 
 # ==========================================
-# 7. قاموس الواجهة
+# 9. قاموس الواجهة
 # ==========================================
 ui = {
     "upload": "📂 ارفع ملف المحاضرة (PDF/TXT)" if is_ar else "📂 Upload Lecture (PDF/TXT)",
@@ -200,7 +272,7 @@ ui = {
 }
 
 # ==========================================
-# 8. منطقة المعالجة والرفع
+# 10. منطقة المعالجة والرفع
 # ==========================================
 if model is None:
     st.error("❌ API Connection Failed.")
@@ -251,7 +323,7 @@ else:
                 st.warning("الرجاء رفع ملف أولاً!" if is_ar else "Please upload a file!")
 
 # ==========================================
-# 9. النتائج التفاعلية والتبويبات
+# 11. النتائج التفاعلية والتبويبات
 # ==========================================
 if st.session_state.analysis_done:
     st.markdown("---")
@@ -325,7 +397,5 @@ if st.session_state.analysis_done:
                     st.session_state.chat_history.append({"role": "assistant", "content": ans})
                 except Exception:
                     st.error("Error generating response.")
-
-
 
 # Force Reboot
