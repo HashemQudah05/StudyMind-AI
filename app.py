@@ -108,7 +108,7 @@ st.markdown(f"""
         font-family: 'IBM Plex Sans Arabic', sans-serif !important; 
     }}
     
-    /* 2. حماية الأيقونات عشان ما تتحول لكلمات */
+    /* 2. حماية الأيقونات عشان ما تتحول لكلمات وتتداخل */
     .material-icons, [class*="icon"], svg {{
         font-family: 'Material Icons', sans-serif !important;
     }}
@@ -126,14 +126,15 @@ st.markdown(f"""
         border: none !important; border-radius: 12px !important; color: white !important; font-weight: bold !important; height: 3.5rem; width: 100% !important;
     }}
     
-    /* صندوق الرفع */
+    /* صندوق الرفع السليم */
     div[data-testid="stFileUploader"] > section {{ 
         border: 2px dashed #00d4aa !important; 
         border-radius: 16px !important; 
     }}
     
-    /* ☁️ تلوين أيقونة الغيمة (Cloud Icon) ☁️ */
-    div[data-testid="stFileUploader"] svg {{
+    /* ☁️ 🛠️ الحل الجذري لتلوين الغيمة 🛠️ ☁️ */
+    div[data-testid="stFileUploader"] svg,
+    div[data-testid="stFileUploader"] button svg path {{
         fill: #00d4aa !important;
         color: #00d4aa !important;
     }}
