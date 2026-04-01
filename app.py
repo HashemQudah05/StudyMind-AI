@@ -102,9 +102,19 @@ card_bg = "#161b22" if is_dark else "#ffffff"
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
-    * {{ font-family: 'IBM Plex Sans Arabic', sans-serif !important; }}
+    
+    /* 1. تطبيق الخط العربي على النصوص وتجنب الأيقونات */
+    html, body, p, span:not(.material-icons):not([class*="icon"]), label, li, h1, h2, h3, button {{ 
+        font-family: 'IBM Plex Sans Arabic', sans-serif !important; 
+    }}
+    
+    /* 2. حماية الأيقونات عشان ما تتحول لكلمات وتتداخل */
+    .material-icons, [class*="icon"], svg {{
+        font-family: 'Material Icons', sans-serif !important;
+    }}
+
     .stApp {{ background-color: {bg_color} !important; }}
-    p, span, label, li, h1, h2, h3 {{ color: {text_color} !important; }}
+    p, span:not(.material-icons), label, li, h1, h2, h3 {{ color: {text_color} !important; }}
     header {{ visibility: hidden; }}
     
     .stTabs [data-baseweb="tab-list"] {{ justify-content: center; }}
@@ -116,10 +126,15 @@ st.markdown(f"""
         border: none !important; border-radius: 12px !important; color: white !important; font-weight: bold !important; height: 3.5rem; width: 100% !important;
     }}
     
-    /* ⬇️ كود صندوق الرفع السليم ⬇️ */
+    /* صندوق الرفع السليم والمتقطع */
     div[data-testid="stFileUploader"] > section {{ 
         border: 2px dashed #00d4aa !important; 
         border-radius: 16px !important; 
+    }}
+    
+    /* إخفاء أي كلمة upload زائدة احتياطياً */
+    div[data-testid="stFileUploader"] span[data-testid="stIconMaterial"] {{
+        display: none !important;
     }}
     
     div[data-testid="stDownloadButton"] button {{
