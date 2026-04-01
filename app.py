@@ -181,7 +181,7 @@ except Exception:
     st.error("❌ الرجاء التأكد من وجود مفاتيح GEMINI و FIREBASE في ملف secrets.toml.")
     st.stop()
 
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # =====================================================================
 # 6. دوال تسجيل الدخول وإنشاء الحساب (Firebase)
