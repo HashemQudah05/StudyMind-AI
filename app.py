@@ -116,8 +116,10 @@ st.markdown(f"""
         border: none !important; border-radius: 12px !important; color: white !important; font-weight: bold !important; height: 3.5rem; width: 100% !important;
     }}
     
+    /* ⬇️ كود صندوق الرفع السليم ⬇️ */
     div[data-testid="stFileUploader"] > section {{ 
-        background-color: {card_bg} !important; border: 2px dashed #00d4aa !important; border-radius: 16px !important; padding: 20px !important;
+        border: 2px dashed #00d4aa !important; 
+        border-radius: 16px !important; 
     }}
     
     div[data-testid="stDownloadButton"] button {{
