@@ -16,6 +16,7 @@ st.set_page_config(page_title="StudyMind AI", page_icon="🧠", layout="wide")
 # =====================================================================
 if "user_token" not in st.session_state: st.session_state.user_token = None
 if "user_email" not in st.session_state: st.session_state.user_email = None
+if "user_id" not in st.session_state: st.session_state.user_id = None # إضافة معرّف المستخدم
 if "chat_history" not in st.session_state: st.session_state.chat_history = []
 if "extracted_text" not in st.session_state: st.session_state.extracted_text = ""
 if "analysis_done" not in st.session_state: st.session_state.analysis_done = False
@@ -25,8 +26,10 @@ if "simple_exp" not in st.session_state: st.session_state.simple_exp = ""
 if "detailed_exp" not in st.session_state: st.session_state.detailed_exp = ""
 
 # =====================================================================
-# 3. التحقق من المفاتيح واصطياد النموذج
+# 3. الروابط والمفاتيح (API Keys & DB)
 # =====================================================================
+DB_URL = "https://studymind-ai-fdac1-default-rtdb.firebaseio.com"
+
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
     FIREBASE_API_KEY = st.secrets["FIREBASE_WEB_API_KEY"]
@@ -69,7 +72,39 @@ def sign_in(email, password):
     return requests.post(url, json={"email": email, "password": password, "returnSecureToken": True}).json()
 
 # =====================================================================
-# 5. التخطيط العلوي للواجهة (Header)
+# 5. القائمة الجانبية (Sidebar) - تظهر فقط للمسجلين
+# =====================================================================
+if st.session_state.user_token is not None:
+    with st.sidebar:
+        st.markdown(f"### 👤 {st.session_state.user_email}")
+        st.markdown("---")
+        st.markdown("### 🗂️ أرشيف أسئلتك (History)")
+        
+        # جلب الأسئلة التي سألها المستخدم فقط وعرضها
+        if st.session_state.chat_history:
+            user_questions = [m for m in st.session_state.chat_history if m["role"] == "user"]
+            for q in reversed(user_questions[-10:]): # عرض آخر 10 أسئلة
+                st.info(f"🕒 {q.get('time', '')}\n\n💬 {q['content'][:40]}...")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🗑️ مسح الأرشيف", use_container_width=True):
+                st.session_state.chat_history = []
+                requests.put(f"{DB_URL}/chats/{st.session_state.user_id}.json", json=[]) # تحديث قاعدة البيانات
+                st.rerun()
+        else:
+            st.caption("لا يوجد محادثات محفوظة حتى الآن.")
+            
+        st.markdown("---")
+        if st.button("🚪 تسجيل خروج | Logout", use_container_width=True):
+            st.session_state.user_token = None
+            st.session_state.user_email = None
+            st.session_state.user_id = None
+            st.session_state.chat_history = []
+            st.session_state.analysis_done = False
+            st.rerun()
+
+# =====================================================================
+# 6. التخطيط العلوي للواجهة (Header)
 # =====================================================================
 col_left, col_center, col_right = st.columns([1, 2, 1])
 
@@ -78,14 +113,6 @@ with col_right:
     is_dark = st.toggle("🌙 Dark | ليلي", value=True)
     lang_toggle = st.radio("Language", ["العربية", "English"], horizontal=True)
     is_ar = lang_toggle == "العربية"
-    
-    if st.session_state.user_token is not None:
-        st.caption(f"👤 {st.session_state.user_email}")
-        if st.button("🚪 Logout | تسجيل خروج"):
-            st.session_state.user_token = None
-            st.session_state.user_email = None
-            st.session_state.analysis_done = False
-            st.rerun()
 
 with col_center:
     st.markdown("<h1 style='text-align: center; background: linear-gradient(135deg, #00d4aa, #0284c7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 4rem; font-weight: 900; margin-bottom: 0;'>StudyMind AI 🧠</h1>", unsafe_allow_html=True)
@@ -93,7 +120,7 @@ with col_center:
     st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 1.2rem; font-weight: 600; margin-bottom: 2rem;'>{sub_text}</p>", unsafe_allow_html=True)
 
 # =====================================================================
-# 6. محرك الألوان الشامل (CSS)
+# 7. محرك الألوان الشامل (CSS)
 # =====================================================================
 bg_color = "#0e1117" if is_dark else "#f4f6f9"
 text_color = "#e2e8f0" if is_dark else "#1e293b"
@@ -103,16 +130,10 @@ st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
     
-    /* 1. تطبيق الخط العربي على النصوص وتجنب الأيقونات */
     html, body, p, span:not(.material-icons):not([class*="icon"]), label, li, h1, h2, h3, button {{ 
         font-family: 'IBM Plex Sans Arabic', sans-serif !important; 
     }}
-    
-    /* 2. حماية الأيقونات عشان ما تتحول لكلمات وتتداخل */
-    .material-icons, [class*="icon"], svg {{
-        font-family: 'Material Icons', sans-serif !important;
-    }}
-
+    .material-icons, [class*="icon"], svg {{ font-family: 'Material Icons', sans-serif !important; }}
     .stApp {{ background-color: {bg_color} !important; }}
     p, span:not(.material-icons), label, li, h1, h2, h3 {{ color: {text_color} !important; }}
     header {{ visibility: hidden; }}
@@ -126,40 +147,24 @@ st.markdown(f"""
         border: none !important; border-radius: 12px !important; color: white !important; font-weight: bold !important; height: 3.5rem; width: 100% !important;
     }}
     
-    /* صندوق الرفع السليم */
-    div[data-testid="stFileUploader"] > section {{ 
-        border: 2px dashed #00d4aa !important; 
-        border-radius: 16px !important; 
-    }}
+    div[data-testid="stFileUploader"] > section {{ border: 2px dashed #00d4aa !important; border-radius: 16px !important; }}
+    div[data-testid="stFileUploader"] svg, div[data-testid="stFileUploader"] button svg path {{ fill: #00d4aa !important; color: #00d4aa !important; }}
+    div[data-testid="stFileUploader"] span[data-testid="stIconMaterial"] {{ display: none !important; }}
     
-    /* ☁️ 🛠️ الحل الجذري لتلوين الغيمة 🛠️ ☁️ */
-    div[data-testid="stFileUploader"] svg,
-    div[data-testid="stFileUploader"] button svg path {{
-        fill: #00d4aa !important;
-        color: #00d4aa !important;
-    }}
-    
-    /* إخفاء أي كلمة upload زائدة احتياطياً */
-    div[data-testid="stFileUploader"] span[data-testid="stIconMaterial"] {{
-        display: none !important;
-    }}
-    
-    div[data-testid="stDownloadButton"] button {{
-        background: transparent !important; border: 2px solid #00d4aa !important; color: #00d4aa !important; border-radius: 8px !important; height: 2.8rem !important; margin-bottom: 15px !important;
-    }}
+    div[data-testid="stDownloadButton"] button {{ background: transparent !important; border: 2px solid #00d4aa !important; color: #00d4aa !important; border-radius: 8px !important; height: 2.8rem !important; margin-bottom: 15px !important; }}
     div[data-testid="stDownloadButton"] button:hover {{ background: #00d4aa !important; color: white !important; }}
-    
     .quiz-card {{ background-color: {card_bg} !important; border: 1px solid rgba(0, 212, 170, 0.3) !important; padding: 25px; border-radius: 12px; margin-bottom: 20px; }}
 </style>
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# 7. شاشة تسجيل الدخول
+# 8. شاشة تسجيل الدخول
 # =====================================================================
 if st.session_state.user_token is None:
     _, col_auth, _ = st.columns([1, 1.5, 1])
     with col_auth:
         tab_login, tab_signup = st.tabs(["🔐 Login (تسجيل دخول)", "📝 Sign Up (حساب جديد)"])
+        
         with tab_login:
             log_email = st.text_input("البريد الإلكتروني / Email", key="log_e")
             log_pass = st.text_input("كلمة المرور / Password", type="password", key="log_p")
@@ -171,7 +176,17 @@ if st.session_state.user_token is None:
                     else:
                         st.session_state.user_token = res["idToken"]
                         st.session_state.user_email = res["email"]
+                        st.session_state.user_id = res["localId"] # حفظ الـ ID لجلب المحادثات
+                        
+                        # 🌐 سحب محادثات المستخدم من قاعدة البيانات 🌐
+                        try:
+                            db_req = requests.get(f"{DB_URL}/chats/{res['localId']}.json")
+                            if db_req.status_code == 200 and db_req.json() is not None:
+                                st.session_state.chat_history = db_req.json()
+                        except: pass
+                        
                         st.rerun()
+                        
         with tab_signup:
             st.info("🔒 **شروط كلمة المرور:**\n- 8 أحرف على الأقل\n- حرف إنجليزي كبير واحد (Capital)\n- رقم واحد على الأقل")
             reg_email = st.text_input("البريد الإلكتروني / Email", key="reg_e")
@@ -187,7 +202,7 @@ if st.session_state.user_token is None:
     st.stop()
 
 # =====================================================================
-# 8. التطبيق الرئيسي (الرفع والمعالجة)
+# 9. التطبيق الرئيسي (الرفع والمعالجة)
 # =====================================================================
 def extract_text(file):
     try:
@@ -197,7 +212,6 @@ def extract_text(file):
         return str(file.read(), "utf-8")
     except: return ""
 
-# الواجهة الرئيسية بالنص بالضبط
 _, col_main, _ = st.columns([1, 2, 1])
 
 with col_main:
@@ -236,17 +250,12 @@ with col_main:
                         if len(parts) >= 4:
                             st.session_state.summary = re.sub(r'^(القسم|الجزء|Part).*?:', '', parts[0], flags=re.MULTILINE).strip()
                             
-                            # 🛠️ الحل الجذري لمشكلة الـ Invalid \escape 🛠️
                             match = re.search(r'\[.*\]', parts[1], re.DOTALL)
                             if match:
-                                json_str = match.group(0)
-                                json_str = json_str.replace('\\', '\\\\') # تنظيف الرموز
-                                try:
-                                    st.session_state.quiz_data = json.loads(json_str, strict=False)
-                                except Exception:
-                                    st.session_state.quiz_data = None
-                            else:
-                                st.session_state.quiz_data = None
+                                json_str = match.group(0).replace('\\', '\\\\')
+                                try: st.session_state.quiz_data = json.loads(json_str, strict=False)
+                                except Exception: st.session_state.quiz_data = None
+                            else: st.session_state.quiz_data = None
                                 
                             st.session_state.simple_exp = re.sub(r'^(القسم|الجزء|Part).*?:', '', parts[2], flags=re.MULTILINE).strip()
                             st.session_state.detailed_exp = re.sub(r'^(القسم|الجزء|Part).*?:', '', parts[3], flags=re.MULTILINE).strip()
@@ -258,30 +267,28 @@ with col_main:
             st.warning("الرجاء رفع ملف المحاضرة أولاً!")
 
 # =====================================================================
-# 9. التبويبات والنتائج
+# 10. التبويبات والنتائج
 # =====================================================================
 if st.session_state.analysis_done:
     st.markdown("---")
     tabs = st.tabs(["📝 الملخص", "📚 شرح مفصل", "💡 شرح مبسط", "❓ اختبار", "💬 شات بوت"] if is_ar else ["📝 Summary", "📚 Detailed", "💡 Simple", "❓ Quiz", "💬 Chat"])
     
     with tabs[0]: 
-        st.download_button("📥 تحميل الملخص (Download)", st.session_state.summary, file_name="Summary.txt")
+        st.download_button("📥 تحميل الملخص", st.session_state.summary, file_name="Summary.txt")
         st.markdown(st.session_state.summary)
         
     with tabs[1]: 
-        st.download_button("📥 تحميل الشرح المفصل (Download)", st.session_state.detailed_exp, file_name="Detailed_Explanation.txt")
+        st.download_button("📥 تحميل الشرح المفصل", st.session_state.detailed_exp, file_name="Detailed_Explanation.txt")
         st.markdown(st.session_state.detailed_exp)
         
     with tabs[2]: 
-        st.download_button("📥 تحميل الشرح المبسط (Download)", st.session_state.simple_exp, file_name="Simple_Explanation.txt")
+        st.download_button("📥 تحميل الشرح المبسط", st.session_state.simple_exp, file_name="Simple_Explanation.txt")
         st.markdown(st.session_state.simple_exp)
         
     with tabs[3]:
         if st.session_state.quiz_data:
-            quiz_text_format = ""
-            for i, q in enumerate(st.session_state.quiz_data):
-                quiz_text_format += f"Q{i+1}: {q['question']}\nAnswers: {', '.join(q['options'])}\nCorrect Answer: {q['correct_answer']}\n\n"
-            st.download_button("📥 تحميل الاختبار (Download Quiz)", quiz_text_format, file_name="Quiz.txt")
+            quiz_text_format = "".join([f"Q{i+1}: {q['question']}\nAnswers: {', '.join(q['options'])}\nCorrect Answer: {q['correct_answer']}\n\n" for i, q in enumerate(st.session_state.quiz_data)])
+            st.download_button("📥 تحميل الاختبار", quiz_text_format, file_name="Quiz.txt")
             
             with st.form("quiz_form"):
                 user_answers = {}
@@ -297,16 +304,9 @@ if st.session_state.analysis_done:
                             st.error(f"❌ Q{i+1}: {q['question']}\n\n**Answer:** {q['correct_answer']}\n**Reason:** {q.get('explanation', '')}")
                     st.success(f"النتيجة النهائية (Score): {score} / {len(st.session_state.quiz_data)}")
         else:
-            st.info("لم يتمكن الذكاء الاصطناعي من توليد الاختبار لهذا الملف (ربما بسبب الرموز المعقدة).")
+            st.info("لم يتمكن الذكاء الاصطناعي من توليد الاختبار لهذا الملف.")
                     
     with tabs[4]:
-        if st.session_state.chat_history:
-            chat_export = ""
-            for m in st.session_state.chat_history:
-                time_str = m.get("time", "")
-                chat_export += f"[{time_str}] {m['role'].upper()}:\n{m['content']}\n\n"
-            st.download_button("📥 تحميل سجل المحادثة (Download Chat)", chat_export, file_name="Chat_History.txt")
-        
         for m in st.session_state.chat_history:
             with st.chat_message(m["role"], avatar="👤" if m["role"] == "user" else "🤖"): 
                 if "time" in m and m["time"]: st.caption(f"🕒 {m['time']}")
@@ -314,18 +314,30 @@ if st.session_state.analysis_done:
                 
         if user_query := st.chat_input("اسألني أي شيء عن محتوى المحاضرة..." if is_ar else "Ask me anything..."):
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # إضافة سؤال المستخدم
             st.session_state.chat_history.append({"role": "user", "content": user_query, "time": current_time})
             with st.chat_message("user", avatar="👤"): 
                 st.caption(f"🕒 {current_time}")
                 st.markdown(user_query)
                 
+            # توليد الرد وإضافته
             with st.spinner('جاري التفكير...'):
                 try:
                     ans = model.generate_content(f"Context: {st.session_state.extracted_text[:4000]}\nUser Question: {user_query}\nAnswer purely in {'Arabic' if is_ar else 'English'}.").text
                     bot_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
                     with st.chat_message("assistant", avatar="🤖"): 
                         st.caption(f"🕒 {bot_time}")
                         st.markdown(ans)
+                        
                     st.session_state.chat_history.append({"role": "assistant", "content": ans, "time": bot_time})
+                    
+                    # 🌐 حفظ المحادثة كاملة في فايربيس 🌐
+                    requests.put(f"{DB_URL}/chats/{st.session_state.user_id}.json", json=st.session_state.chat_history)
+                    
+                    # تحديث الشاشة عشان تطلع الأسئلة بالقائمة الجانبية فوراً
+                    st.rerun()
+                    
                 except Exception:
                     st.error("حدث خطأ أثناء الاتصال بالمساعد الذكي.")
