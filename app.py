@@ -7,16 +7,17 @@ import requests
 from datetime import datetime
 
 # =====================================================================
-# 1. إعدادات الصفحة الأساسية
+# 1. Page Configuration
 # =====================================================================
 st.set_page_config(page_title="StudyMind AI", page_icon="🧠", layout="wide")
 
 # =====================================================================
-# 2. تهيئة الذاكرة (Session State)
+# 2. Session State Initialization
 # =====================================================================
 if "user_token" not in st.session_state: st.session_state.user_token = None
 if "user_email" not in st.session_state: st.session_state.user_email = None
-if "user_id" not in st.session_state: st.session_state.user_id = None # إضافة معرّف المستخدم
+if "user_id" not in st.session_state: st.session_state.user_id = None 
+if "current_session_id" not in st.session_state: st.session_state.current_session_id = None # ADDED: Session Tracker
 if "chat_history" not in st.session_state: st.session_state.chat_history = []
 if "extracted_text" not in st.session_state: st.session_state.extracted_text = ""
 if "analysis_done" not in st.session_state: st.session_state.analysis_done = False
@@ -26,7 +27,7 @@ if "simple_exp" not in st.session_state: st.session_state.simple_exp = ""
 if "detailed_exp" not in st.session_state: st.session_state.detailed_exp = ""
 
 # =====================================================================
-# 3. الروابط والمفاتيح (API Keys & DB)
+# 3. API Keys & Database Links
 # =====================================================================
 DB_URL = "https://studymind-ai-fdac1-default-rtdb.firebaseio.com"
 
@@ -55,7 +56,7 @@ if model is None:
     st.stop()
 
 # =====================================================================
-# 4. دوال تسجيل الدخول (Firebase Auth)
+# 4. Firebase Auth Functions
 # =====================================================================
 def check_password_strength(password):
     if len(password) < 8: return False
@@ -72,39 +73,54 @@ def sign_in(email, password):
     return requests.post(url, json={"email": email, "password": password, "returnSecureToken": True}).json()
 
 # =====================================================================
-# 5. القائمة الجانبية (Sidebar) - تظهر فقط للمسجلين
+# 5. Sidebar - History & Sessions (MODIFIED)
 # =====================================================================
 if st.session_state.user_token is not None:
     with st.sidebar:
         st.markdown(f"### 👤 {st.session_state.user_email}")
         st.markdown("---")
-        st.markdown("### 🗂️ أرشيف أسئلتك (History)")
+        st.markdown("### 🗂️ أرشيف المحاضرات (History)")
         
-        # جلب الأسئلة التي سألها المستخدم فقط وعرضها
-        if st.session_state.chat_history:
-            user_questions = [m for m in st.session_state.chat_history if m["role"] == "user"]
-            for q in reversed(user_questions[-10:]): # عرض آخر 10 أسئلة
-                st.info(f"🕒 {q.get('time', '')}\n\n💬 {q['content'][:40]}...")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🗑️ مسح الأرشيف", use_container_width=True):
-                st.session_state.chat_history = []
-                requests.put(f"{DB_URL}/chats/{st.session_state.user_id}.json", json=[]) # تحديث قاعدة البيانات
-                st.rerun()
+        # Fetch all user sessions
+        try:
+            db_req = requests.get(f"{DB_URL}/users/{st.session_state.user_id}/sessions.json")
+            sessions = db_req.json() if db_req.status_code == 200 else None
+        except:
+            sessions = None
+
+        if sessions:
+            # Display newest sessions first
+            for s_id in sorted(sessions.keys(), reverse=True):
+                s_data = sessions[s_id]
+                btn_label = s_data.get('title', 'محاضرة محفوظة')
+                
+                # Button to load the entire session
+                if st.button(f"📁 {btn_label}", key=f"btn_{s_id}", use_container_width=True):
+                    st.session_state.current_session_id = s_id
+                    st.session_state.extracted_text = s_data.get("extracted_text", "")
+                    st.session_state.summary = s_data.get("summary", "")
+                    st.session_state.simple_exp = s_data.get("simple_exp", "")
+                    st.session_state.detailed_exp = s_data.get("detailed_exp", "")
+                    st.session_state.quiz_data = s_data.get("quiz_data", None)
+                    st.session_state.chat_history = s_data.get("chat_history", [])
+                    st.session_state.analysis_done = True
+                    st.rerun()
         else:
-            st.caption("لا يوجد محادثات محفوظة حتى الآن.")
+            st.caption("لا يوجد محاضرات محفوظة حتى الآن.")
             
         st.markdown("---")
         if st.button("🚪 تسجيل خروج | Logout", use_container_width=True):
             st.session_state.user_token = None
             st.session_state.user_email = None
             st.session_state.user_id = None
+            st.session_state.current_session_id = None
             st.session_state.chat_history = []
             st.session_state.analysis_done = False
+            st.session_state.quiz_data = None
             st.rerun()
 
 # =====================================================================
-# 6. التخطيط العلوي للواجهة (Header)
+# 6. Header
 # =====================================================================
 col_left, col_center, col_right = st.columns([1, 2, 1])
 
@@ -120,7 +136,7 @@ with col_center:
     st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 1.2rem; font-weight: 600; margin-bottom: 2rem;'>{sub_text}</p>", unsafe_allow_html=True)
 
 # =====================================================================
-# 7. محرك الألوان الشامل (CSS)
+# 7. Global CSS Engine (FIXED HEADER VISIBILITY)
 # =====================================================================
 bg_color = "#0e1117" if is_dark else "#f4f6f9"
 text_color = "#e2e8f0" if is_dark else "#1e293b"
@@ -136,7 +152,9 @@ st.markdown(f"""
     .material-icons, [class*="icon"], svg {{ font-family: 'Material Icons', sans-serif !important; }}
     .stApp {{ background-color: {bg_color} !important; }}
     p, span:not(.material-icons), label, li, h1, h2, h3 {{ color: {text_color} !important; }}
-    header {{ visibility: hidden; }}
+    
+    /* FIXED: Made header transparent instead of hidden so the sidebar toggle works */
+    .stApp header {{ background-color: transparent !important; }}
     
     .stTabs [data-baseweb="tab-list"] {{ justify-content: center; }}
     .stTabs [aria-selected="true"] {{ border-bottom: 3px solid #00d4aa !important; }}
@@ -158,7 +176,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# 8. شاشة تسجيل الدخول
+# 8. Login Screen
 # =====================================================================
 if st.session_state.user_token is None:
     _, col_auth, _ = st.columns([1, 1.5, 1])
@@ -176,15 +194,8 @@ if st.session_state.user_token is None:
                     else:
                         st.session_state.user_token = res["idToken"]
                         st.session_state.user_email = res["email"]
-                        st.session_state.user_id = res["localId"] # حفظ الـ ID لجلب المحادثات
-                        
-                        # 🌐 سحب محادثات المستخدم من قاعدة البيانات 🌐
-                        try:
-                            db_req = requests.get(f"{DB_URL}/chats/{res['localId']}.json")
-                            if db_req.status_code == 200 and db_req.json() is not None:
-                                st.session_state.chat_history = db_req.json()
-                        except: pass
-                        
+                        st.session_state.user_id = res["localId"]
+                        st.session_state.chat_history = [] # Start fresh, sidebar handles old sessions
                         st.rerun()
                         
         with tab_signup:
@@ -202,7 +213,7 @@ if st.session_state.user_token is None:
     st.stop()
 
 # =====================================================================
-# 9. التطبيق الرئيسي (الرفع والمعالجة)
+# 9. Main Processing (Upload & AI) - MODIFIED TO SAVE SESSIONS
 # =====================================================================
 def extract_text(file):
     try:
@@ -260,6 +271,25 @@ with col_main:
                             st.session_state.simple_exp = re.sub(r'^(القسم|الجزء|Part).*?:', '', parts[2], flags=re.MULTILINE).strip()
                             st.session_state.detailed_exp = re.sub(r'^(القسم|الجزء|Part).*?:', '', parts[3], flags=re.MULTILINE).strip()
                             st.session_state.analysis_done = True
+                            st.session_state.chat_history = [] # Reset chat for new file
+                            
+                            # --- NEW: SAVE ENTIRE SESSION TO FIREBASE ---
+                            session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            st.session_state.current_session_id = session_id
+                            
+                            session_data = {
+                                "title": f"Lecture - {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                                "extracted_text": st.session_state.extracted_text,
+                                "summary": st.session_state.summary,
+                                "simple_exp": st.session_state.simple_exp,
+                                "detailed_exp": st.session_state.detailed_exp,
+                                "quiz_data": st.session_state.quiz_data,
+                                "chat_history": st.session_state.chat_history
+                            }
+                            try:
+                                requests.put(f"{DB_URL}/users/{st.session_state.user_id}/sessions/{session_id}.json", json=session_data)
+                            except: pass
+                            
                             st.balloons()
                         else: st.error("خطأ في تنسيق البيانات المسترجعة.")
                     except Exception as e: st.error(f"حدث خطأ أثناء المعالجة: {e}")
@@ -267,7 +297,7 @@ with col_main:
             st.warning("الرجاء رفع ملف المحاضرة أولاً!")
 
 # =====================================================================
-# 10. التبويبات والنتائج
+# 10. Tabs & Results (MODIFIED CHAT SAVING)
 # =====================================================================
 if st.session_state.analysis_done:
     st.markdown("---")
@@ -315,13 +345,11 @@ if st.session_state.analysis_done:
         if user_query := st.chat_input("اسألني أي شيء عن محتوى المحاضرة..." if is_ar else "Ask me anything..."):
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # إضافة سؤال المستخدم
             st.session_state.chat_history.append({"role": "user", "content": user_query, "time": current_time})
             with st.chat_message("user", avatar="👤"): 
                 st.caption(f"🕒 {current_time}")
                 st.markdown(user_query)
                 
-            # توليد الرد وإضافته
             with st.spinner('جاري التفكير...'):
                 try:
                     ans = model.generate_content(f"Context: {st.session_state.extracted_text[:4000]}\nUser Question: {user_query}\nAnswer purely in {'Arabic' if is_ar else 'English'}.").text
@@ -333,10 +361,10 @@ if st.session_state.analysis_done:
                         
                     st.session_state.chat_history.append({"role": "assistant", "content": ans, "time": bot_time})
                     
-                    # 🌐 حفظ المحادثة كاملة في فايربيس 🌐
-                    requests.put(f"{DB_URL}/chats/{st.session_state.user_id}.json", json=st.session_state.chat_history)
+                    # --- NEW: UPDATE SPECIFIC SESSION CHAT IN FIREBASE ---
+                    if st.session_state.current_session_id:
+                        requests.put(f"{DB_URL}/users/{st.session_state.user_id}/sessions/{st.session_state.current_session_id}/chat_history.json", json=st.session_state.chat_history)
                     
-                    # تحديث الشاشة عشان تطلع الأسئلة بالقائمة الجانبية فوراً
                     st.rerun()
                     
                 except Exception:
