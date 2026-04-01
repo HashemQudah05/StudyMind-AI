@@ -173,6 +173,9 @@ st.markdown(f"""
 # =====================================================================
 # 5. التحقق من المفاتيح (API Keys)
 # =====================================================================
+# =====================================================================
+# 5. التحقق من المفاتيح واصطياد النموذج (API Keys & Model Hunter)
+# =====================================================================
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
     FIREBASE_API_KEY = st.secrets["FIREBASE_WEB_API_KEY"]
@@ -181,7 +184,25 @@ except Exception:
     st.error("❌ الرجاء التأكد من وجود مفاتيح GEMINI و FIREBASE في ملف secrets.toml.")
     st.stop()
 
-model = genai.GenerativeModel('gemini-1.5-flash')
+@st.cache_resource
+def get_working_model():
+    try:
+        # جلب كل النماذج المسموحة لمفتاحك
+        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # اختيار الأفضل تلقائياً
+        if 'models/gemini-1.5-flash' in available: return genai.GenerativeModel('gemini-1.5-flash')
+        if 'models/gemini-pro' in available: return genai.GenerativeModel('gemini-pro')
+        if available: return genai.GenerativeModel(available[0]) # الخطة البديلة القسوى
+        return None
+    except Exception:
+        return None
+
+model = get_working_model()
+
+if model is None:
+    st.error("❌ مفتاح جوجل الخاص بك لا يملك صلاحية لأي نموذج حالياً! الحل: اذهب لموقع Google AI Studio وأنشئ مفتاحاً جديداً (Create API Key) واستبدله في ملف الأسرار.")
+    st.stop()
 
 # =====================================================================
 # 6. دوال تسجيل الدخول وإنشاء الحساب (Firebase)
