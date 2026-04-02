@@ -120,7 +120,7 @@ def inject_css(is_dark, is_ar):
         color: #64748b !important;
         margin-top: 2px;
     }}
-
+    
     .history-title {{
         font-size: 0.72rem;
         font-weight: 700;
@@ -188,12 +188,11 @@ def inject_css(is_dark, is_ar):
     /* ── UPLOAD ZONE ── */
     div[data-testid="stFileUploader"] > section {{
         border: 2px dashed #00d4aa !important;
-        border-radius: 20px !important;
-        background: {"rgba(0,212,170,0.04)" if is_dark else "rgba(0,212,170,0.03)"} !important;
-        padding: 2.5rem 1.5rem !important;
-        transition: all 0.3s !important;
-        min-height: 160px;
+        border-radius: 18px !important;
+        padding: 3rem 1rem !important;
+        min-height: 180px;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
     }}
@@ -284,19 +283,19 @@ def inject_css(is_dark, is_ar):
         0%,100% {{ box-shadow: 0 0 0 0 rgba(0,212,170,0.4); }}
         50%      {{ box-shadow: 0 0 0 6px rgba(0,212,170,0); }}
     }}
-
+    
     /* ── MAIN BUTTON ── */
     .stButton > button, div[data-testid="stFormSubmitButton"] > button {{
-        background: linear-gradient(135deg, #00d4aa, #0284c7) !important;
-        border: none !important;
-        border-radius: 14px !important;
-        color: white !important;
-        font-weight: 700 !important;
-        font-size: 1rem !important;
-        height: 3.6rem;
-        width: 100% !important;
-        letter-spacing: 0.03em;
-        transition: all 0.25s !important;
+       background: linear-gradient(135deg, #00d4aa, #0284c7) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    height: 3.2rem;
+    width: 100% !important;
+    letter-spacing: 0.03em;
+    transition: all 0.25s !important;
     }}
     .stButton > button:hover {{
         transform: translateY(-2px) !important;
@@ -323,7 +322,7 @@ def inject_css(is_dark, is_ar):
         border-radius: 14px;
         margin-bottom: 20px;
     }}
-
+    
     .stTabs [data-baseweb="tab-list"] {{ justify-content: center; }}
     .stTabs [aria-selected="true"] {{ border-bottom: 3px solid #00d4aa !important; }}
     .stTabs [aria-selected="true"] span {{ color: #00d4aa !important; font-weight: 700 !important; }}
@@ -340,18 +339,35 @@ def render_sidebar(is_dark, card_bg, text_color):
         return
 
     with st.sidebar:
+
+        # ── Safe user data ──
+        user_email = st.session_state.get("user_email", "")
+        initials = user_email[:2].upper() if user_email else "??"
+
         # ── User header ──
-        initials = st.session_state.user_email[:2].upper() if st.session_state.user_email else "??"
         st.markdown(f"""
         <div class="sidebar-header">
-            <div style="display:flex;align-items:center;gap:10px;">
-                <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#00d4aa,#0284c7);
-                            display:flex;align-items:center;justify-content:center;
-                            font-weight:700;font-size:0.9rem;color:white;">{initials}</div>
-                <div>
-                    <div class="user-name">👤 حسابي</div>
-                    <div class="user-email">{st.session_state.user_email}</div>
+            <div style="display:flex;align-items:center;gap:10px;direction:rtl;">
+                
+                <div style="
+                    width:40px;
+                    height:40px;
+                    border-radius:50%;
+                    background:linear-gradient(135deg,#00d4aa,#0284c7);
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-weight:700;
+                    font-size:1rem;
+                    color:white;">
+                    {initials}
                 </div>
+
+                <div style="flex:1;">
+                    <div class="user-name">👤 حسابي</div>
+                    <div class="user-email">{user_email}</div>
+                </div>
+
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -471,7 +487,7 @@ if st.session_state.user_token is None:
         with tab_login:
             log_email = st.text_input("البريد الإلكتروني / Email", key="log_e")
             log_pass  = st.text_input("كلمة المرور / Password", type="password", key="log_p")
-            st.markdown("<br>", unsafe_allow_html=True)
+            st.write("")
             if st.button("دخول 🚀", use_container_width=True):
                 with st.spinner("جاري التحقق..."):
                     res = sign_in(log_email, log_pass)
@@ -488,7 +504,7 @@ if st.session_state.user_token is None:
             st.info("🔒 **شروط كلمة المرور:**\n- 8 أحرف على الأقل\n- حرف إنجليزي كبير (Capital)\n- رقم واحد على الأقل")
             reg_email = st.text_input("البريد الإلكتروني / Email", key="reg_e")
             reg_pass  = st.text_input("كلمة المرور / Password", type="password", key="reg_p")
-            st.markdown("<br>", unsafe_allow_html=True)
+            st.write("")
             if st.button("تسجيل ✨", use_container_width=True):
                 if not check_password_strength(reg_pass):
                     st.error("⚠️ كلمة المرور لا تطابق الشروط.")
@@ -511,7 +527,7 @@ def extract_text(file):
     except:
         return ""
 
-_, col_main, _ = st.columns([1, 2, 1])
+col_main = st.container()
 
 with col_main:
 
@@ -519,43 +535,52 @@ with col_main:
     upload_lbl = "📂 ارفع ملف المحاضرة (PDF أو TXT)" if is_ar else "📂 Upload Lecture File (PDF or TXT)"
     st.markdown(f"<p style='font-size:0.9rem;font-weight:600;color:#64748b;margin-bottom:4px;'>{upload_lbl}</p>", unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader(
-        "اسحب وأفلت الملف هنا، أو اضغط للاختيار" if is_ar else "Drag & drop your file here, or click to browse",
-        type=["pdf", "txt"],
-        label_visibility="visible"
-    )
+    st.markdown("""
+<div style="text-align:center; margin-bottom:12px;">
+    <div style="font-size:1.05rem; font-weight:700;">📂 اسحب الملف هنا</div>
+    <div style="font-size:0.8rem; color:#64748b;">PDF أو TXT • حتى 200MB</div>
+</div>
+""", unsafe_allow_html=True)
 
-    # ── File preview card ──
-    if uploaded_file:
-        file_size_kb = round(uploaded_file.size / 1024, 1)
-        file_icon    = "📄" if uploaded_file.type == "application/pdf" else "📝"
-        file_type    = "PDF Document" if uploaded_file.type == "application/pdf" else "Text File"
-        st.session_state.uploaded_filename = uploaded_file.name
+uploaded_file = st.file_uploader(
+    "",
+    type=["pdf", "txt"],
+    label_visibility="collapsed"
+)
 
-        st.markdown(f"""
-        <div class="file-preview-card">
-            <span class="file-preview-icon">{file_icon}</span>
-            <div class="file-preview-info">
-                <div class="file-preview-name">{uploaded_file.name}</div>
-                <div class="file-preview-meta">{file_type} · {file_size_kb} KB</div>
-            </div>
-            <span class="file-ready-badge">✓ جاهز</span>
+# --- File preview card ---
+if uploaded_file:
+    file_size_kb = round(uploaded_file.size / 1024, 1)
+    file_icon = "📄" if uploaded_file.type == "application/pdf" else "📝"
+    file_type = "PDF Document" if uploaded_file.type == "application/pdf" else "Text File"
+
+    st.session_state.uploaded_filename = uploaded_file.name
+
+    st.markdown(f"""
+    <div class="file-preview-card">
+        <span class="file-preview-icon">{file_icon}</span>
+        <div class="file-preview-info">
+            <div class="file-preview-name">{uploaded_file.name}</div>
+            <div class="file-preview-meta">{file_type} · {file_size_kb} KB</div>
         </div>
-        """, unsafe_allow_html=True)
+        <span class="file-ready-badge">✓ جاهز</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 
-    # ── Level slider ──
-    level_lbl = "🎯 مستوى التبسيط:" if is_ar else "🎯 Simplification Level:"
-    levels    = ["مبتدئ جداً", "متوسط", "متقدم"] if is_ar else ["Beginner", "Intermediate", "Advanced"]
-    level     = st.select_slider(level_lbl, options=levels)
+# --- Level slider ---
+level_lbl = "🎯 مستوى التبسيط:" if is_ar else "🎯 Simplification Level:"
+levels = ["مبتدئ جداً", "متوسط", "متقدم"] if is_ar else ["Beginner", "Intermediate", "Advanced"]
 
-    st.markdown("<br>", unsafe_allow_html=True)
+level = st.select_slider(level_lbl, options=levels)
+
+st.write("")
 
     # ── Process button ──
-    btn_lbl = "✨ ابدأ المعالجة الذكية" if is_ar else "✨ Start AI Processing"
+btn_lbl = "✨ ابدأ المعالجة الذكية" if is_ar else "✨ Start AI Processing"
 
-    if st.button(btn_lbl, use_container_width=True):
+if st.button(btn_lbl, use_container_width=True):
         if not uploaded_file:
             st.warning("⚠️ الرجاء رفع ملف أولاً!" if is_ar else "⚠️ Please upload a file first!")
         else:
@@ -711,7 +736,7 @@ if st.session_state.analysis_done:
                 for i, q in enumerate(st.session_state.quiz_data):
                     st.markdown(f"<div class='quiz-card'><strong>Q{i+1}:</strong> {q['question']}</div>", unsafe_allow_html=True)
                     user_answers[i] = st.radio("", q['options'], key=f"q_{i}", index=None, label_visibility="collapsed")
-                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.write("")
                 if st.form_submit_button("إرسال الإجابات 🚀" if is_ar else "Submit 🚀"):
                     score = sum(1 for i, q in enumerate(st.session_state.quiz_data) if user_answers[i] == q['correct_answer'])
                     for i, q in enumerate(st.session_state.quiz_data):
