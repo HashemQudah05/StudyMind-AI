@@ -527,60 +527,48 @@ def extract_text(file):
     except:
         return ""
 
-col_main = st.container()
+_, col_main, _ = st.columns([1, 2, 1])
 
 with col_main:
 
-    # ── Upload label ──
-    upload_lbl = "📂 ارفع ملف المحاضرة (PDF أو TXT)" if is_ar else "📂 Upload Lecture File (PDF or TXT)"
-    st.markdown(f"<p style='font-size:0.9rem;font-weight:600;color:#64748b;margin-bottom:4px;'>{upload_lbl}</p>", unsafe_allow_html=True)
+    # ── Upload zone ──
+    drag_label = "اسحب الملف هنا أو اضغط للاختيار" if is_ar else "Drag & drop or click to browse"
+    uploaded_file = st.file_uploader(
+        drag_label,
+        type=["pdf", "txt"],
+        label_visibility="visible"
+    )
 
-    st.markdown("""
-<div style="text-align:center; margin-bottom:12px;">
-    <div style="font-size:1.05rem; font-weight:700;">📂 اسحب الملف هنا</div>
-    <div style="font-size:0.8rem; color:#64748b;">PDF أو TXT • حتى 200MB</div>
-</div>
-""", unsafe_allow_html=True)
-
-uploaded_file = st.file_uploader(
-    "",
-    type=["pdf", "txt"],
-    label_visibility="collapsed"
-)
-
-# --- File preview card ---
-if uploaded_file:
-    file_size_kb = round(uploaded_file.size / 1024, 1)
-    file_icon = "📄" if uploaded_file.type == "application/pdf" else "📝"
-    file_type = "PDF Document" if uploaded_file.type == "application/pdf" else "Text File"
-
-    st.session_state.uploaded_filename = uploaded_file.name
-
-    st.markdown(f"""
-    <div class="file-preview-card">
-        <span class="file-preview-icon">{file_icon}</span>
-        <div class="file-preview-info">
-            <div class="file-preview-name">{uploaded_file.name}</div>
-            <div class="file-preview-meta">{file_type} · {file_size_kb} KB</div>
+    # ── File preview card ──
+    if uploaded_file:
+        file_size_kb = round(uploaded_file.size / 1024, 1)
+        file_icon = "📄" if uploaded_file.type == "application/pdf" else "📝"
+        file_type = "PDF Document" if uploaded_file.type == "application/pdf" else "Text File"
+        st.session_state.uploaded_filename = uploaded_file.name
+        st.markdown(f"""
+        <div class="file-preview-card">
+            <span class="file-preview-icon">{file_icon}</span>
+            <div class="file-preview-info">
+                <div class="file-preview-name">{uploaded_file.name}</div>
+                <div class="file-preview-meta">{file_type} · {file_size_kb} KB</div>
+            </div>
+            <span class="file-ready-badge">✓ جاهز</span>
         </div>
-        <span class="file-ready-badge">✓ جاهز</span>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-st.write("")
+    st.write("")
 
-# --- Level slider ---
-level_lbl = "🎯 مستوى التبسيط:" if is_ar else "🎯 Simplification Level:"
-levels = ["مبتدئ جداً", "متوسط", "متقدم"] if is_ar else ["Beginner", "Intermediate", "Advanced"]
+    # ── Level slider ──
+    level_lbl = "🎯 مستوى التبسيط:" if is_ar else "🎯 Simplification Level:"
+    levels = ["مبتدئ جداً", "متوسط", "متقدم"] if is_ar else ["Beginner", "Intermediate", "Advanced"]
+    level = st.select_slider(level_lbl, options=levels)
 
-level = st.select_slider(level_lbl, options=levels)
-
-st.write("")
+    st.write("")
 
     # ── Process button ──
-btn_lbl = "✨ ابدأ المعالجة الذكية" if is_ar else "✨ Start AI Processing"
+    btn_lbl = "✨ ابدأ المعالجة الذكية" if is_ar else "✨ Start AI Processing"
 
-if st.button(btn_lbl, use_container_width=True):
+    if st.button(btn_lbl, use_container_width=True):
         if not uploaded_file:
             st.warning("⚠️ الرجاء رفع ملف أولاً!" if is_ar else "⚠️ Please upload a file first!")
         else:
