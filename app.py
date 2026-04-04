@@ -143,7 +143,7 @@ with col_center:
     st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 1.2rem; font-weight: 600; margin-bottom: 2rem;'>{sub_text}</p>", unsafe_allow_html=True)
 
 # =====================================================================
-# 7. Global CSS Engine (FIXED SIDEBAR TOGGLE)
+# 7. Global CSS Engine (FIXED SIDEBAR TOGGLE ICON)
 # =====================================================================
 bg_color = "#0e1117" if is_dark else "#f4f6f9"
 text_color = "#e2e8f0" if is_dark else "#1e293b"
@@ -153,16 +153,23 @@ st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
     
-    html, body, p, span:not(.material-icons):not([class*="icon"]), label, li, h1, h2, h3, button {{ 
+    /* 1. تطبيق الخط العربي على النصوص العادية فقط */
+    html, body, p, label, li, h1, h2, h3, button {{ 
         font-family: 'IBM Plex Sans Arabic', sans-serif !important; 
     }}
-    .material-icons, [class*="icon"], svg {{ font-family: 'Material Icons', sans-serif !important; }}
-    .stApp {{ background-color: {bg_color} !important; }}
-    p, span:not(.material-icons), label, li, h1, h2, h3 {{ color: {text_color} !important; }}
     
-    /* FIXED: Sidebar Arrow visibility */
+    /* 2. حماية خطوط الأيقونات من التغيير */
+    .material-icons, .material-symbols-rounded, [class*="icon"], svg, [data-testid="collapsedControl"] span, [data-testid="collapsedControl"] i {{ 
+        font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important; 
+    }}
+    
+    .stApp {{ background-color: {bg_color} !important; }}
+    p, label, li, h1, h2, h3 {{ color: {text_color} !important; }}
+    
+    /* 3. إظهار زر السهم الجانبي بشكل واضح */
     .stApp header {{ background-color: transparent !important; pointer-events: none; }}
     .stApp header > div {{ pointer-events: auto; }}
+    
     [data-testid="collapsedControl"] {{
         z-index: 999999 !important;
         background-color: {card_bg} !important;
@@ -170,12 +177,12 @@ st.markdown(f"""
         border: 1px solid #00d4aa !important;
         margin-top: 10px;
         margin-left: 10px;
+        color: #00d4aa !important;
     }}
-    [data-testid="collapsedControl"] svg {{ fill: #00d4aa !important; color: #00d4aa !important; }}
     
     .stTabs [data-baseweb="tab-list"] {{ justify-content: center; }}
     .stTabs [aria-selected="true"] {{ border-bottom: 3px solid #00d4aa !important; }}
-    .stTabs [aria-selected="true"] span {{ color: #00d4aa !important; font-weight: 700 !important; }}
+    .stTabs [aria-selected="true"] span {{ color: #00d4aa !important; font-weight: 700 !important; font-family: 'IBM Plex Sans Arabic', sans-serif !important; }}
     
     .stButton>button, div[data-testid="stFormSubmitButton"] > button {{
         background: linear-gradient(135deg, #00d4aa, #0284c7) !important;
