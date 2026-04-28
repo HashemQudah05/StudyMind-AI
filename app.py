@@ -9,7 +9,7 @@ from datetime import datetime
 # =====================================================================
 # 1. Page Configuration (FIXED: Sidebar open by default)
 # =====================================================================
-st.set_page_config(page_title="StudyMind AI", page_icon="🧠", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="ReadMind AI", page_icon="🧠", layout="wide", initial_sidebar_state="expanded")
 
 # =====================================================================
 # 2. Session State Initialization
@@ -138,7 +138,7 @@ with col_right:
     is_ar = lang_toggle == "العربية"
 
 with col_center:
-    st.markdown("<h1 style='text-align: center; background: linear-gradient(135deg, #00d4aa, #0284c7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 4rem; font-weight: 900; margin-bottom: 0;'>StudyMind AI 🧠</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; background: linear-gradient(135deg, #00d4aa, #0284c7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 4rem; font-weight: 900; margin-bottom: 0;'>ReadMind AI 🧠</h1>", unsafe_allow_html=True)
     sub_text = "المساعد الأكاديمي الذكي" if is_ar else "Smart Academic Assistant"
     st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 1.2rem; font-weight: 600; margin-bottom: 2rem;'>{sub_text}</p>", unsafe_allow_html=True)
 
